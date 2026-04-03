@@ -269,7 +269,7 @@ const ProductSection = ({ title, tag, products }) => {
 const Home = () => {
   return (
     <div className="home-page">
-      <Header />
+  
 
       <main className="home-container">
         <section className="store-heading">
@@ -328,7 +328,7 @@ const Home = () => {
         </section>
       </main>
 
-      <Footer />
+     
     </div>
   );
 };
