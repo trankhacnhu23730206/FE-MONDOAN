@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./CreateAccount.css";
 import heroImg from "../../assets/hero.png";
+import axios from "axios";
 
 const CreateAccount = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -23,10 +25,10 @@ const CreateAccount = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
       setError("Vui lòng nhập đầy đủ thông tin");
       return;
     }
@@ -43,35 +45,22 @@ const CreateAccount = () => {
 
     setError("");
 
-    // fake create account
-    localStorage.setItem(
-      "registeredUser",
-      JSON.stringify({
+    try {
+      const response = await axios.post('http://localhost:3000/api/auth/register', {
+        username: formData.username,
         email: formData.email,
         password: formData.password,
-      })
-    );
+      });
 
-    alert("Tạo tài khoản thành công");
-    navigate("/login");
+      alert("Tạo tài khoản thành công");
+      navigate("/login");
+    } catch (error) {
+      setError(error.response?.data?.message || "Đã xảy ra lỗi khi tạo tài khoản");
+    }
   };
 
   return (
     <div className="create-page">
-      <header className="create-navbar">
-        <Link to="/" className="brand">
-          V<span>Store</span>
-        </Link>
-
-        <nav className="nav-links">
-          <a href="/">Store</a>
-          <a href="/">PC</a>
-          <a href="/">Search</a>
-          <a href="/">Support</a>
-          <a href="/">Cart</a>
-        </nav>
-      </header>
-
       <section
         className="create-hero"
         style={{
@@ -90,6 +79,20 @@ const CreateAccount = () => {
             {error && <p className="error-message">{error}</p>}
 
             <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Username</label>
+                <div className="input-box">
+                  <span className="input-icon">👤</span>
+                  <input
+                    type="text"
+                    name="username"
+                    placeholder="Enter your username"
+                    value={formData.username}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
                 <label>Email Address</label>
                 <div className="input-box">
@@ -146,11 +149,6 @@ const CreateAccount = () => {
             <div className="divider">
               <span>or</span>
             </div>
-
-            <button type="button" className="google-btn">
-              <span className="google-icon">G</span>
-              Continue with Google
-            </button>
 
             <p className="signin-text">
               Already have an account? <Link to="/login">Sign In</Link>

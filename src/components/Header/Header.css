@@ -40,6 +40,7 @@
 }
 
 .header-nav {
+  margin-left:140px;
   display: flex;
   align-items: center;
   gap: 34px;
@@ -68,25 +69,61 @@
 .header-user {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: max-content;
 }
 
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #ef233c;
+  background: #ef233c;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.auth-button:hover {
+  transform: translateY(-1px);
+  background: #d11c2f;
+}
+
+.auth-button--secondary {
+  background: transparent;
+  color: #ef233c;
+}
+
+.auth-button--secondary:hover {
+  background: rgba(239, 35, 60, 0.08);
+}
+
 .user-avatar {
-  width: 24px;
-  height: 24px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: #111111;
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .user-name {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: #111111;
   white-space: nowrap;
 }

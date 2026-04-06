@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
 import heroImg from "../../assets/hero.png";
+import axios from "axios";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const Login = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.email || !formData.password) {
@@ -31,33 +32,24 @@ const Login = () => {
 
     setError("");
 
-    // fake auth để test private route
-    localStorage.setItem("token", "demo_token");
-    localStorage.setItem(
-      "user",
-      JSON.stringify({
+    try {
+      const response = await axios.post('http://localhost:3000/api/auth/login', {
         email: formData.email,
-      })
-    );
+        password: formData.password,
+      });
 
-    navigate("/");
+      // Lưu token và user info
+      localStorage.setItem("token", response.data.accessToken);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+
+      navigate("/");
+    } catch (error) {
+      setError(error.response?.data?.message || "Đã xảy ra lỗi khi đăng nhập");
+    }
   };
 
   return (
     <div className="login-page">
-      <header className="login-navbar">
-        <Link to="/" className="brand">
-          V<span>Store</span>
-        </Link>
-
-        <nav className="nav-links">
-          <a href="/">Store</a>
-          <a href="/">PC</a>
-          <a href="/">Search</a>
-          <a href="/">Support</a>
-          <a href="/">Cart</a>
-        </nav>
-      </header>
 
       <section
         className="login-hero"
@@ -116,12 +108,12 @@ const Login = () => {
 
             <div className="divider">
               <span>or</span>
-            </div>
+            </div>  
 
-            <button type="button" className="google-btn">
+            {/* <button type="button" className="google-btn">
               <span className="google-icon">G</span>
               Continue with Google
-            </button>
+            </button> */}
 
             <p className="signup-text">
               Don't have an account? <Link to="/create-account">Sign up</Link>

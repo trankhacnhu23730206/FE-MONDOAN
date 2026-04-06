@@ -3,7 +3,8 @@ import { Link, NavLink } from "react-router-dom";
 import "./Header.css";
 
 const Header = () => {
-  const user = JSON.parse(localStorage.getItem("user"));
+  const token = localStorage.getItem("token");
+  const user = token ? JSON.parse(localStorage.getItem("user")) : null;
 
   return (
     <header className="header">
@@ -31,10 +32,25 @@ const Header = () => {
         </nav>
 
         <div className="header-user">
-          <div className="user-avatar">👤</div>
-          <span className="user-name">
-            {user?.email ? user.email.split("@")[0] : "Long Châu"}
-          </span>
+          {token && user ? (
+            <>
+              <div className="user-avatar">
+                {user?.email ? user.email.charAt(0).toUpperCase() : "U"}
+              </div>
+              <span className="user-name">
+                {user?.email ? user.email.split("@")[0] : "User"}
+              </span>
+            </>
+          ) : (
+            <div className="auth-buttons">
+              <Link to="/login" className="auth-button auth-button--secondary">
+                Sign In
+              </Link>
+              <Link to="/create-account" className="auth-button">
+                Sign Up
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>
