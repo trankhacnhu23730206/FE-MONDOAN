@@ -245,6 +245,11 @@
   font-weight: 600;
 }
 
+.top-selling-text {
+  color: #dc2626;
+  font-weight: 700;
+}
+
 @media (max-width: 1200px) {
   .category-bar {
     grid-template-columns: repeat(5, 1fr);
