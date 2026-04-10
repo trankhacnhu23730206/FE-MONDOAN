@@ -22,7 +22,7 @@ export default function ProductDetailPage() {
       try {
         const fetchedProduct = await getProductById(productId);
         setProduct(fetchedProduct);
-        setSelectedImage(heroImage); // Use placeholder image
+        setSelectedImage(fetchedProduct.thumbnail_url || heroImage);
       } catch (err) {
         console.error('Failed to fetch product:', err);
         setError('Không thể tải thông tin sản phẩm');
@@ -124,7 +124,7 @@ export default function ProductDetailPage() {
               <button className="add-cart-main-btn" type="button">
                 Add to Cart
               </button>
-              <button className="buy-now-btn" type="button">
+              <button className="buy-now-btn" onClick={() => navigate(`/payment/${productId}`)} type="button">
                 Buy Now
               </button>
             </div>

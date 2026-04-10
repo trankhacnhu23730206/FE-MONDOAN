@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Home.css";
-import { getAllCategories, getProductsByCategory } from "../../services/productService";
+import { getProductsByCategory } from "../../services/productService";
+import { getAllCategories } from "../../services/categoryService";
 import { perks } from "../../constants";
 
 const ProductCard = ({ item, onProductClick }) => {
@@ -11,7 +12,13 @@ const ProductCard = ({ item, onProductClick }) => {
       onClick={() => onProductClick(item.id)}
       style={{ cursor: 'pointer' }}
     >
-      <div className="product-thumb">{item.thumb}</div>
+      <div className="product-thumb">
+        {item.thumb ? (
+          <img src={item.thumb} alt={item.title} />
+        ) : (
+          <span>📦</span>
+        )}
+      </div>
       <h4>{item.title}</h4>
       <p>{item.desc}</p>
 
@@ -152,7 +159,7 @@ const Home = () => {
                     desc: product.description || 'No description',
                     oldPrice: `${(product.price * 1.2).toLocaleString()}đ`,
                     price: `${product.price.toLocaleString()}đ`,
-                    thumb: categoryIcon,
+                    thumb: product.thumbnail_url,
                   }))}
                   onProductClick={handleProductClick}
                 />

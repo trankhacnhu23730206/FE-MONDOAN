@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductByCategory.css";
-import { getProductsByCategory, getAllCategories } from "../../services/productService";
+import { getProductsByCategory } from "../../services/productService";
+import { getAllCategories } from "../../services/categoryService";
 
 // Chỉ dùng ảnh có sẵn trong assets của bạn
 import heroImage from "../../assets/hero.png";
@@ -142,7 +143,7 @@ export default function ProductByCategory() {
                 {displayedProducts.map((item) => (
                   <div className="product-card" key={item.id}>
                     <div className="product-image-wrap">
-                      <img src={heroImage} alt={item.name} />
+                      <img src={item.thumbnail_url || heroImage} alt={item.name} />
                     </div>
 
                     <h3>{item.name}</h3>

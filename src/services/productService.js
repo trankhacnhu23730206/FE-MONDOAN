@@ -41,3 +41,17 @@ export const getProductById = async (productId) => {
     throw error;
   }
 };
+
+export const searchProducts = async (query) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/products/search?q=${encodeURIComponent(query)}`);
+    if (!response.ok) {
+      throw new Error('Failed to search products');
+    }
+    const data = await response.json();
+    return data.products || [];
+  } catch (error) {
+    console.error('Error searching products:', error);
+    throw error;
+  }
+};

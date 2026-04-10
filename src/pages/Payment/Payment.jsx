@@ -164,7 +164,7 @@ export default function Payment() {
       return;
     }
 
-    alert("Đặt hàng thành công! Đây là bản demo UI.");
+    navigate("/payment-success");
   };
 
   const benefits = [

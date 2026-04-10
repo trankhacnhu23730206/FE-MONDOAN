@@ -13,6 +13,14 @@ const Header = () => {
     navigate("/login");
   };
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const query = e.target.search.value.trim();
+    if (query) {
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+    }
+  };
+
   return (
     <header className="header">
       <div className="header-container">
@@ -21,22 +29,31 @@ const Header = () => {
         </Link>
 
         <nav className="header-nav">
-          <NavLink to="/" className="nav-item">
+          <NavLink end to="/" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             Store
           </NavLink>
-          <NavLink to="/" className="nav-item">
+          {/* <NavLink end to="/category/2" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             PC
-          </NavLink>
-          <NavLink to="/" className="nav-item">
-            Search
-          </NavLink>
-          <NavLink to="/" className="nav-item">
+          </NavLink> */}
+          <NavLink to="/support" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             Support
           </NavLink>
-          <NavLink to="/" className="nav-item">
+          <NavLink to="/cart" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             Cart
           </NavLink>
         </nav>
+
+        <form className="header-search" onSubmit={handleSearch}>
+          <input
+            type="text"
+            name="search"
+            placeholder="Search products..."
+            className="search-input"
+          />
+          <button type="submit" className="search-btn">
+            🔍
+          </button>
+        </form>
 
         <div className="header-user">
           {token && user ? (
