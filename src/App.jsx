@@ -12,6 +12,7 @@ import Cart from './pages/Cart/Cart'
 import Support from './pages/Support/Support'
 import Search from './pages/Search/Search'
 import PaymentSuccess from './pages/PaymentSuccess/PaymentSuccess'
+import EditUser from './pages/EditUser/EditUser';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -41,6 +42,7 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/support" element={<Support />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/edit-user" element={<EditUser />} />
       </Routes>
       <Footer />
     </BrowserRouter>

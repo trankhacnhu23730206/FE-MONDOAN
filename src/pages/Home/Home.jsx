@@ -3,9 +3,27 @@ import { useNavigate } from "react-router-dom";
 import "./Home.css";
 import { getProductsByCategory } from "../../services/productService";
 import { getAllCategories } from "../../services/categoryService";
+import { addToCart } from "../../services/cartService";
 import { perks } from "../../constants";
 
-const ProductCard = ({ item, onProductClick }) => {
+const ProductCard = ({ item, onProductClick, onAddToCart }) => {
+  const [addToCartLoading, setAddToCartLoading] = useState(false);
+
+  const handleAddToCart = async (e) => {
+    e.stopPropagation();
+    setAddToCartLoading(true);
+
+    try {
+      await onAddToCart(item.id);
+      // Có thể thêm toast notification ở đây
+    } catch (err) {
+      console.error('Failed to add to cart:', err);
+      // Có thể thêm error notification ở đây
+    } finally {
+      setAddToCartLoading(false);
+    }
+  };
+
   return (
     <div 
       className={`product-card ${item.highlight ? "highlight-card" : ""}`}
@@ -29,18 +47,16 @@ const ProductCard = ({ item, onProductClick }) => {
 
       <button
         className="buy-btn"
-        onClick={(e) => {
-          e.stopPropagation();
-          onProductClick(item.id);
-        }}
+        onClick={handleAddToCart}
+        disabled={addToCartLoading}
       >
-        Add to cart
+        {addToCartLoading ? "Adding..." : "Add to cart"}
       </button>
     </div>
   );
 };
 
-const ProductSection = ({ title, tag, products, onProductClick }) => {
+const ProductSection = ({ title, tag, products, onProductClick, onAddToCart }) => {
   return (
     <section className="home-section">
       <div className="section-top">
@@ -53,7 +69,12 @@ const ProductSection = ({ title, tag, products, onProductClick }) => {
 
       <div className="products-grid">
         {products.map((item) => (
-          <ProductCard key={item.id} item={item} onProductClick={onProductClick} />
+          <ProductCard 
+            key={item.id} 
+            item={item} 
+            onProductClick={onProductClick}
+            onAddToCart={onAddToCart}
+          />
         ))}
       </div>
     </section>
@@ -62,27 +83,46 @@ const ProductSection = ({ title, tag, products, onProductClick }) => {
 
 const Home = () => {
   const navigate = useNavigate();
-  const topCategories = [2, 10, 15];
+  const [topCategories, setTopCategories] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [products, setProducts] = useState({
-    2: [],
-    10: [],
-    15: [],
-  });
-  const [loading, setLoading] = useState({
-    2: false,
-    10: false,
-    15: false,
-  });
+  const [products, setProducts] = useState({});
+  const [loading, setLoading] = useState({});
 
   const handleProductClick = (productId) => {
     navigate(`/product/${productId}`);
+  };
+
+  const handleAddToCart = async (productId) => {
+    await addToCart(productId, 1);
+  };
+
+  const getRandomCategories = (allCategories) => {
+    // Lọc ra các category không phải 2, 10, 15
+    const filteredCategories = allCategories.filter(cat => ![2, 10, 15].includes(cat.id));
+    
+    // Lấy 3 category ngẫu nhiên
+    const shuffled = [...filteredCategories].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, 3).map(cat => cat.id);
   };
 
   const fetchCategories = async () => {
     try {
       const fetchedCategories = await getAllCategories();
       setCategories(fetchedCategories);
+      
+      // Lấy 3 category random sau khi fetch categories
+      const randomCategoryIds = getRandomCategories(fetchedCategories);
+      setTopCategories(randomCategoryIds);
+      
+      // Khởi tạo products và loading state với random categories
+      const initialProducts = {};
+      const initialLoading = {};
+      randomCategoryIds.forEach(id => {
+        initialProducts[id] = [];
+        initialLoading[id] = false;
+      });
+      setProducts(initialProducts);
+      setLoading(initialLoading);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
       setCategories([]);
@@ -105,13 +145,14 @@ const Home = () => {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      await fetchCategories();
-      await fetchProductsForTopCategories();
-    };
-
-    fetchData();
+    fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (topCategories.length > 0) {
+      fetchProductsForTopCategories();
+    }
+  }, [topCategories]);
 
   return (
     <div className="home-page">
@@ -162,6 +203,7 @@ const Home = () => {
                     thumb: product.thumbnail_url,
                   }))}
                   onProductClick={handleProductClick}
+                  onAddToCart={handleAddToCart}
                 />
               )}
             </div>

@@ -208,6 +208,9 @@
   color: #111111;
   cursor: pointer;
   transition: background 0.15s ease;
+  display: block;
+  text-decoration: none;
+  font-family: inherit;
 }
 
 .dropdown-item:hover {

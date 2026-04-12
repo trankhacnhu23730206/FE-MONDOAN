@@ -65,13 +65,12 @@ const Header = () => {
                 {user?.email ? user.email.split("@")[0] : "User"}
               </span>
               <div className="user-dropdown">
-                <button
-                  type="button"
+                <Link
+                  to="/edit-user"
                   className="dropdown-item"
-                  onClick={() => navigate("/create-account")}
                 >
                   Edit User
-                </button>
+                </Link>
                 <button
                   type="button"
                   className="dropdown-item"
