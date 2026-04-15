@@ -1,15 +1,56 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import "./Header.css";
+import { CART_UPDATED_EVENT, getCartItemCount } from "../../services/cartService";
 
 const Header = () => {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
   const user = token ? JSON.parse(localStorage.getItem("user")) : null;
+  const [cartCount, setCartCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncCartCount = async () => {
+      if (!token) {
+        if (isMounted) {
+          setCartCount(0);
+        }
+        return;
+      }
+
+      try {
+        const count = await getCartItemCount();
+        if (isMounted) {
+          setCartCount(count);
+        }
+      } catch {
+        if (isMounted) {
+          setCartCount(0);
+        }
+      }
+    };
+
+    const handleCartUpdated = (event) => {
+      setCartCount(event.detail?.count || 0);
+    };
+
+    syncCartCount();
+    window.addEventListener(CART_UPDATED_EVENT, handleCartUpdated);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(CART_UPDATED_EVENT, handleCartUpdated);
+    };
+  }, [token]);
 
   const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setCartCount(0);
     navigate("/login");
   };
 
@@ -38,8 +79,9 @@ const Header = () => {
           <NavLink to="/support" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
             Support
           </NavLink>
-          <NavLink to="/cart" className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-            Cart
+          <NavLink to="/cart" className={({ isActive }) => isActive ? 'nav-item nav-item--cart active' : 'nav-item nav-item--cart'}>
+            <span>Cart</span>
+            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </NavLink>
         </nav>
 

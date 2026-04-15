@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
 import heroImg from "../../assets/hero.png";
-import axios from "axios";
+import api from "../../utils/api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -33,13 +33,15 @@ const Login = () => {
     setError("");
 
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/login', {
+      const response = await api.post("/auth/login", {
         email: formData.email,
         password: formData.password,
       });
 
-      // Lưu token và user info
+      // Luu dong bo key token de interceptor va UI su dung chung.
+      localStorage.setItem("accessToken", response.data.accessToken);
       localStorage.setItem("token", response.data.accessToken);
+      localStorage.setItem("refreshToken", response.data.refreshToken);
       localStorage.setItem("user", JSON.stringify(response.data.user));
 
       navigate("/");

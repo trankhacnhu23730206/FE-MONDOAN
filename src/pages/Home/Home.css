@@ -221,6 +221,24 @@
   opacity: 0.92;
 }
 
+.product-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.buy-btn--cart {
+  background: #111827;
+}
+
+.buy-btn--now {
+  background: #e11d48;
+}
+
+.buy-btn--now:hover {
+  opacity: 0.94;
+}
+
 .perks-section {
   background: #ffffff;
   border: 1px solid #ececec;
@@ -322,6 +340,10 @@
   }
 
   .perks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-actions {
     grid-template-columns: 1fr;
   }
 }

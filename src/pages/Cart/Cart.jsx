@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./Cart.css";
 import { getCart, updateCartItemQty, removeCartItem } from "../../services/cartService";
 
 const Cart = () => {
+  const navigate = useNavigate();
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,6 +58,22 @@ const Cart = () => {
 
   const formatPrice = (number) => {
     return "$" + number.toLocaleString("en-US");
+  };
+
+  const handleCheckout = () => {
+    if (cart.length === 0) {
+      setError("Giỏ hàng đang trống, không thể checkout.");
+      return;
+    }
+
+    const firstProductId = cart[0]?.product_id;
+
+    if (!firstProductId) {
+      setError("Không tìm thấy sản phẩm hợp lệ để checkout.");
+      return;
+    }
+
+    navigate(`/order/${firstProductId}`);
   };
 
   return (
@@ -138,7 +156,13 @@ const Cart = () => {
               <span className="total-price">{formatPrice(subtotal)}</span>
             </div>
 
-            <button className="checkout-btn">Proceed to Checkout</button>
+            <button
+              className="checkout-btn"
+              onClick={handleCheckout}
+              disabled={loading || cart.length === 0}
+            >
+              Proceed to Checkout
+            </button>
             <button
               className="continue-btn"
               onClick={() => (window.location.href = "/")}

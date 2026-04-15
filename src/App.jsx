@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login/Login'
 import Home from './pages/Home/Home'
 import CreateAccount from './pages/CreateAccount/CreateAccount'
@@ -7,6 +8,7 @@ import ProductByCategory from './pages/ProductByCategory/ProductByCategory'
 import ProductDetailPage from './pages/ProductDetailPage/ProductDetailPage'
 import Header from './components/Header/Header'
 import Footer from './components/Footer/Footer'
+import Order from './pages/Order/Order'
 import Payment from './pages/Payment/Payment'
 import Cart from './pages/Cart/Cart'
 import Support from './pages/Support/Support'
@@ -30,6 +32,15 @@ function App() {
 
     <BrowserRouter>
       <ScrollToTop />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            borderRadius: '10px',
+          },
+        }}
+      />
       <Header />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -37,7 +48,8 @@ function App() {
         <Route path="/create-account" element={<CreateAccount />} />
         <Route path="/category/:categoryId" element={<ProductByCategory />} />
         <Route path="/product/:productId" element={<ProductDetailPage />} />
-        <Route path="/payment/:productId" element={<Payment />} />
+        <Route path="/order/:productId" element={<Order />} />
+        <Route path="/payment/:orderId" element={<Payment />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/support" element={<Support />} />

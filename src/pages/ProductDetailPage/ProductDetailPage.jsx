@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./ProductDetailPage.css";
 import { getProductById } from "../../services/productService";
+import { addToCart } from "../../services/cartService";
+import toast from "react-hot-toast";
 
 import heroImage from "../../assets/hero.png";
 
@@ -14,6 +16,21 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(heroImage);
+  const [addToCartLoading, setAddToCartLoading] = useState(false);
+
+  const handleAddToCart = async () => {
+    if (addToCartLoading) return;
+
+    try {
+      setAddToCartLoading(true);
+      await addToCart(Number(productId), 1);
+      toast.success("Sản phẩm của bạn đã add vô cart thành công");
+    } catch (err) {
+      toast.error(err.message || "Không thể thêm sản phẩm vào cart");
+    } finally {
+      setAddToCartLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -121,10 +138,10 @@ export default function ProductDetailPage() {
             <div className="product-price-main">{formatPrice(product.price)}</div>
 
             <div className="detail-action-buttons">
-              <button className="add-cart-main-btn" type="button">
-                Add to Cart
+              <button className="add-cart-main-btn" onClick={handleAddToCart} type="button" disabled={addToCartLoading}>
+                {addToCartLoading ? "Adding..." : "Add to Cart"}
               </button>
-              <button className="buy-now-btn" onClick={() => navigate(`/payment/${productId}`)} type="button">
+              <button className="buy-now-btn" onClick={() => navigate(`/order/${productId}`)} type="button">
                 Buy Now
               </button>
             </div>

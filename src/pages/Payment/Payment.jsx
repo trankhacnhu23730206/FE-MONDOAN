@@ -1,395 +1,515 @@
 import React, { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./Payment.css";
+import { createOrder } from "../../services/orderService";
+import { confirmPayment } from "../../services/paymentService";
 
-import reactLogo from "../../assets/react.svg";
-import viteLogo from "../../assets/vite.svg";
-import heroImage from "../../assets/hero.png";
+const demoOrder = {
+  id: "ORD-240415-001",
+  productName: "Razer Viper V3 Pro",
+  productSubtitle: "Counter-Strike 2 Edition Mouse",
+  qty: 1,
+  price: 9998000,
+  shipping: 0,
+  image: "",
+};
 
-const products = [
-  {
-    id: 1,
-    name: "Laptop Gaming MSI Cyborg 15",
-    category: "laptop",
-    image: heroImage,
-    price: 27990000,
-  },
-  {
-    id: 2,
-    name: "Laptop ASUS TUF Gaming",
-    category: "laptop",
-    image: heroImage,
-    price: 25990000,
-  },
-  {
-    id: 3,
-    name: "Laptop Acer Nitro V",
-    category: "laptop",
-    image: heroImage,
-    price: 22490000,
-  },
-  {
-    id: 4,
-    name: "PC Gaming RTX 4060",
-    category: "pc",
-    image: reactLogo,
-    price: 22990000,
-  },
-  {
-    id: 5,
-    name: "PC ASUS TUF RTX 4060",
-    category: "pc",
-    image: reactLogo,
-    price: 25990000,
-  },
-  {
-    id: 6,
-    name: "PC Office Basic",
-    category: "pc",
-    image: reactLogo,
-    price: 10990000,
-  },
-  {
-    id: 7,
-    name: "Razer Viper V3 Pro Counter-Strike 2 Edition Mouse",
-    category: "mice",
-    image: viteLogo,
-    price: 4990000,
-  },
-  {
-    id: 8,
-    name: "Logitech G Pro X Superlight",
-    category: "mice",
-    image: viteLogo,
-    price: 2890000,
-  },
-  {
-    id: 9,
-    name: "SteelSeries Prime",
-    category: "mice",
-    image: viteLogo,
-    price: 2190000,
-  },
-  {
-    id: 10,
-    name: "AKKO 3087 Mechanical Keyboard",
-    category: "keyboard",
-    image: heroImage,
-    price: 1990000,
-  },
+const supportedBanks = [
+  "Vietcombank",
+  "VietinBank",
+  "Techcombank",
+  "ACB",
+  "Sacombank",
+  "Eximbank",
+  "OCB",
+  "SHB",
+  "VIB",
+  "SCB",
+  "MB",
 ];
 
-const formatPrice = (value) => value.toLocaleString("vi-VN") + "đ";
-
-export default function Payment() {
-  const { productId } = useParams();
+function Payment() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const product = useMemo(() => {
-    return products.find((item) => String(item.id) === String(productId)) || products[0];
-  }, [productId]);
+  const orderFromState = location.state?.order || {};
+  const order = {
+    ...demoOrder,
+    ...orderFromState,
+  };
 
+  const [paymentMethod, setPaymentMethod] = useState("cod");
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
-  const [contactInfo, setContactInfo] = useState({
-    name: "Phan Nhật Hòa",
-    email: "phannhathoa13@gmail.com",
-    keepUpdated: true,
+  const [bankPayment, setBankPayment] = useState({
+    bankName: supportedBanks[0],
+    accountNumber: "",
+    accountName: "",
   });
 
-  const [shippingInfo, setShippingInfo] = useState({
-    name: "Phan Nhật Hòa",
-    phone: "0587189159",
-    address: "123 Nguyen Van Cong",
-    district: "Go Vap",
-    city: "Ho Chi Minh",
-    country: "Viet Nam",
-    sameAsBilling: true,
+  const [masterCardInfo, setMasterCardInfo] = useState({
+    number: "",
+    expiry: "",
+    name: "",
+    cvv: "",
   });
 
-  const shippingFee = 0;
-  const subtotal = product.price;
-  const total = subtotal + shippingFee - discount;
-
-  const handleContactChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setContactInfo((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+  const formatCurrency = (value) => {
+    return `${Number(value || 0).toLocaleString("vi-VN")}đ`;
   };
 
-  const handleShippingChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setShippingInfo((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
+  const subtotal = useMemo(() => {
+    return Number(order.price || 0) * Number(order.qty || 1);
+  }, [order.price, order.qty]);
+
+  const shipping = Number(order.shipping || 0);
+
+  const total = useMemo(() => {
+    return Math.max(subtotal + shipping - discount, 0);
+  }, [subtotal, shipping, discount]);
 
   const handleApplyPromo = () => {
     const code = promoCode.trim().toUpperCase();
 
-    if (code === "SALE10") {
-      setDiscount(Math.round(product.price * 0.1));
-      alert("Áp dụng mã SALE10 thành công!");
+    if (!code) {
+      alert("Vui lòng nhập promo code.");
+      return;
+    }
+
+    if (code === "EASTER10") {
+      setDiscount(Math.round(subtotal * 0.1));
+      alert("Áp dụng mã EASTER10 thành công.");
       return;
     }
 
     if (code === "FREESHIP") {
-      setDiscount(0);
-      alert("Mã FREESHIP đã được áp dụng. Shipping đang miễn phí.");
+      setDiscount(shipping);
+      alert("Áp dụng mã FREESHIP thành công.");
       return;
     }
 
     setDiscount(0);
-    alert("Mã giảm giá không hợp lệ.");
+    alert("Mã không hợp lệ.");
   };
 
-  const handlePlaceOrder = (e) => {
-    e.preventDefault();
+  const handleCardChange = (field, value) => {
+    let nextValue = value;
 
-    if (
-      !contactInfo.name ||
-      !contactInfo.email ||
-      !shippingInfo.name ||
-      !shippingInfo.phone ||
-      !shippingInfo.address ||
-      !shippingInfo.district ||
-      !shippingInfo.city ||
-      !shippingInfo.country
-    ) {
-      alert("Vui lòng nhập đầy đủ thông tin.");
+    if (field === "number") {
+      nextValue = value
+        .replace(/\D/g, "")
+        .slice(0, 16)
+        .replace(/(\d{4})(?=\d)/g, "$1 ");
+    }
+
+    if (field === "expiry") {
+      const raw = value.replace(/\D/g, "").slice(0, 4);
+      nextValue =
+        raw.length >= 3 ? `${raw.slice(0, 2)}/${raw.slice(2, 4)}` : raw;
+    }
+
+    if (field === "cvv") {
+      nextValue = value.replace(/\D/g, "").slice(0, 4);
+    }
+
+    setMasterCardInfo((prev) => ({
+      ...prev,
+      [field]: nextValue,
+    }));
+  };
+
+  const handleBankPaymentChange = (field, value) => {
+    let nextValue = value;
+
+    if (field === "accountNumber") {
+      nextValue = value.replace(/\D/g, "").slice(0, 20);
+    }
+
+    setBankPayment((prev) => ({
+      ...prev,
+      [field]: nextValue,
+    }));
+  };
+
+  const isValidMastercardNumber = (value) => {
+    const digits = value.replace(/\s/g, "");
+    return /^((5[1-5]\d{14})|(2(2[2-9]|[3-6]\d|7[01])\d{12})|(2720\d{12}))$/.test(
+      digits
+    );
+  };
+
+  const validateForm = () => {
+    if (paymentMethod === "bank_card") {
+      if (
+        !bankPayment.bankName ||
+        !bankPayment.accountNumber.trim() ||
+        !bankPayment.accountName.trim()
+      ) {
+        alert("Vui lòng nhập đầy đủ thông tin thẻ ngân hàng.");
+        return false;
+      }
+    }
+
+    if (paymentMethod === "mastercard") {
+      if (
+        !masterCardInfo.number.trim() ||
+        !masterCardInfo.expiry.trim() ||
+        !masterCardInfo.name.trim() ||
+        !masterCardInfo.cvv.trim()
+      ) {
+        alert("Vui lòng nhập đầy đủ thông tin thẻ Mastercard.");
+        return false;
+      }
+
+      if (!isValidMastercardNumber(masterCardInfo.number)) {
+        alert("Số thẻ Mastercard không hợp lệ.");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const mapPaymentMethodToApi = (method) => {
+    if (method === "cod") return "COD";
+    if (method === "mastercard" || method === "bank_card") {
+      return "BANK_TRANSFER";
+    }
+    return "COD";
+  };
+
+  const buildTransactionCode = () => {
+    return `TXN_${Date.now()}`;
+  };
+
+  const handleProceedCheckout = async () => {
+    if (submitLoading) return;
+    setSubmitError("");
+
+    if (!validateForm()) return;
+
+    const productId = Number(order.productId);
+    if (!Number.isInteger(productId) || productId <= 0) {
+      setSubmitError("Thiếu productId hợp lệ để tạo đơn hàng.");
       return;
     }
 
-    navigate("/payment-success");
-  };
+    const shippingInfo = order.shippingInfo || {};
+    const contactInfo = order.contactInfo || {};
 
-  const benefits = [
-    { icon: "🚚", label: "Free Standard Shipping" },
-    { icon: "🛡️", label: "Risk-Free Shopping" },
-    { icon: "🎧", label: "Dedicated Customer Support" },
-  ];
+    const apiPayload = {
+      shipping_full_name: shippingInfo.name || contactInfo.name || "",
+      shipping_phone: shippingInfo.phone || "",
+      shipping_address_line1: shippingInfo.address || "",
+      shipping_district: shippingInfo.district || "",
+      shipping_city: shippingInfo.city || "",
+      shipping_country: shippingInfo.country || "Viet Nam",
+      note: contactInfo.email ? `Contact email: ${contactInfo.email}` : "",
+      payment_method: mapPaymentMethodToApi(paymentMethod),
+      shipping_fee: shipping,
+      discount_amount: discount,
+      items: [
+        {
+          product_id: productId,
+          quantity: Number(order.qty || 1),
+        },
+      ],
+    };
+
+    const payload = {
+      orderId: order.id,
+      productName: order.productName,
+      qty: order.qty,
+      subtotal,
+      shipping,
+      discount,
+      total,
+      paymentMethod,
+      bankPayment: paymentMethod === "bank_card" ? bankPayment : null,
+      masterCardInfo: paymentMethod === "mastercard" ? masterCardInfo : null,
+    };
+
+    try {
+      setSubmitLoading(true);
+      const created = await createOrder(apiPayload);
+      const createdOrder = created?.order || null;
+
+      if (createdOrder?.id && paymentMethod !== "cod") {
+        await confirmPayment({
+          orderId: createdOrder.id,
+          provider: mapPaymentMethodToApi(paymentMethod),
+          transactionCode: buildTransactionCode(),
+        });
+      }
+
+      console.log("PAYMENT PAYLOAD:", payload);
+      console.log("ORDER API RESPONSE:", created);
+
+      navigate("/payment-success", {
+        state: {
+          order: {
+            ...payload,
+            apiOrder: createdOrder,
+          },
+        },
+      });
+    } catch (error) {
+      setSubmitError(error.message || "Không thể tạo đơn hàng. Vui lòng thử lại.");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
 
   return (
     <div className="payment-page">
-      <div className="payment-container">
-        <h1 className="payment-title">Checkout</h1>
+      <div className="payment-shell">
+        <main className="payment-main">
+          <div className="payment-page-title">
+            <button className="back-btn" onClick={() => navigate(-1)}>
+              Back
+            </button>
+            <h1>Checkout</h1>
+          </div>
 
-        <div className="payment-layout">
-          <form className="payment-left" onSubmit={handlePlaceOrder}>
-            <section className="payment-box">
-              <div className="section-title">
-                <span>👤</span>
-                <h2>Contact Information</h2>
+          <div className="payment-grid">
+            <section className="payment-left-card">
+              <h2>Payment</h2>
+              <p className="payment-subtext">
+                Please select a payment method to complete your purchase.
+              </p>
+
+              <div
+                className={`payment-option ${
+                  paymentMethod === "cod" ? "active" : ""
+                }`}
+                onClick={() => setPaymentMethod("cod")}
+              >
+                <div className="payment-option-head">
+                  <label className="radio-wrap">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={paymentMethod === "cod"}
+                      onChange={() => setPaymentMethod("cod")}
+                    />
+                    <span>Thanh toán khi nhận hàng (COD)</span>
+                  </label>
+                </div>
+                <p>Bạn thanh toán tiền mặt khi nhận hàng tại nhà.</p>
               </div>
 
-              <div className="form-grid two-cols">
-                <div className="input-group">
-                  <label>Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={contactInfo.name}
-                    onChange={handleContactChange}
-                    placeholder="Your name"
-                  />
+              <div
+                className={`payment-option ${
+                  paymentMethod === "mastercard" ? "active" : ""
+                }`}
+                onClick={() => setPaymentMethod("mastercard")}
+              >
+                <div className="payment-option-head">
+                  <label className="radio-wrap">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={paymentMethod === "mastercard"}
+                      onChange={() => setPaymentMethod("mastercard")}
+                    />
+                    <span>Thanh toán bằng thẻ Mastercard</span>
+                  </label>
+
+                  <div className="card-badges">
+                    <span>Mastercard</span>
+                  </div>
                 </div>
 
-                <div className="input-group">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={contactInfo.email}
-                    onChange={handleContactChange}
-                    placeholder="Your email"
-                  />
+                <p>Nhập thông tin thẻ Mastercard để thanh toán ngay.</p>
+
+                <div
+                  className={`option-content ${
+                    paymentMethod !== "mastercard" ? "disabled" : ""
+                  }`}
+                >
+                  <div className="card-number-row">
+                    <input
+                      type="text"
+                      placeholder="0000 0000 0000 0000"
+                      value={masterCardInfo.number}
+                      onChange={(e) =>
+                        handleCardChange("number", e.target.value)
+                      }
+                    />
+                    <input
+                      type="text"
+                      placeholder="MM/YY"
+                      value={masterCardInfo.expiry}
+                      onChange={(e) =>
+                        handleCardChange("expiry", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <div className="card-bottom-row">
+                    <input
+                      type="text"
+                      placeholder="Cardholder Name"
+                      value={masterCardInfo.name}
+                      onChange={(e) => handleCardChange("name", e.target.value)}
+                    />
+                    <input
+                      type="password"
+                      placeholder="CVV"
+                      value={masterCardInfo.cvv}
+                      onChange={(e) => handleCardChange("cvv", e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  name="keepUpdated"
-                  checked={contactInfo.keepUpdated}
-                  onChange={handleContactChange}
-                />
-                <span>Keep me updated on exclusive offers</span>
-              </label>
+              <div
+                className={`payment-option ${
+                  paymentMethod === "bank_card" ? "active" : ""
+                }`}
+                onClick={() => setPaymentMethod("bank_card")}
+              >
+                <div className="payment-option-head">
+                  <label className="radio-wrap">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={paymentMethod === "bank_card"}
+                      onChange={() => setPaymentMethod("bank_card")}
+                    />
+                    <span>Thẻ ngân hàng nội địa</span>
+                  </label>
+
+                  <div className="card-badges">
+                    <span>NAPAS</span>
+                  </div>
+                </div>
+
+                <p>Chọn ngân hàng và nhập thông tin để thanh toán.</p>
+
+                <div
+                  className={`option-content ${
+                    paymentMethod !== "bank_card" ? "disabled" : ""
+                  }`}
+                >
+                  <div className="bank-select-row">
+                    <select
+                      value={bankPayment.bankName}
+                      onChange={(e) =>
+                        handleBankPaymentChange("bankName", e.target.value)
+                      }
+                    >
+                      {supportedBanks.map((bank) => (
+                        <option key={bank} value={bank}>
+                          {bank}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="card-number-row">
+                    <input
+                      type="text"
+                      placeholder="Số tài khoản"
+                      value={bankPayment.accountNumber}
+                      onChange={(e) =>
+                        handleBankPaymentChange("accountNumber", e.target.value)
+                      }
+                    />
+                    <input
+                      type="text"
+                      placeholder="Tên chủ tài khoản"
+                      value={bankPayment.accountName}
+                      onChange={(e) =>
+                        handleBankPaymentChange("accountName", e.target.value)
+                      }
+                    />
+                  </div>
+
+                  <p className="option-note">
+                    Ngân hàng đã chọn: <strong>{bankPayment.bankName}</strong>
+                  </p>
+                </div>
+              </div>
             </section>
 
-            <section className="payment-box">
-              <div className="section-title">
-                <span>🚚</span>
-                <h2>Shipping Address</h2>
-              </div>
-
-              <div className="form-grid two-cols">
-                <div className="input-group">
-                  <label>Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={shippingInfo.name}
-                    onChange={handleShippingChange}
-                    placeholder="Receiver name"
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>Phone</label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={shippingInfo.phone}
-                    onChange={handleShippingChange}
-                    placeholder="Phone number"
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>Address</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={shippingInfo.address}
-                    onChange={handleShippingChange}
-                    placeholder="Street address"
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>District</label>
-                  <input
-                    type="text"
-                    name="district"
-                    value={shippingInfo.district}
-                    onChange={handleShippingChange}
-                    placeholder="District"
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>City</label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={shippingInfo.city}
-                    onChange={handleShippingChange}
-                    placeholder="City"
-                  />
-                </div>
-
-                <div className="input-group">
-                  <label>Country</label>
-                  <input
-                    type="text"
-                    name="country"
-                    value={shippingInfo.country}
-                    onChange={handleShippingChange}
-                    placeholder="Country"
-                  />
-                </div>
-              </div>
-
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  name="sameAsBilling"
-                  checked={shippingInfo.sameAsBilling}
-                  onChange={handleShippingChange}
-                />
-                <span>Billing address same as shipping</span>
-              </label>
-
-              <button className="place-order-btn" type="submit">
-                Place Order
-              </button>
-            </section>
-          </form>
-
-          <aside className="payment-right">
-            <section className="payment-box summary-box">
-              <div className="section-title">
-                <h2>Order Summary</h2>
-              </div>
+            <aside className="payment-summary-card">
+              <h2>Order Summary</h2>
 
               <div className="summary-product">
-                <div className="summary-product-image">
-                  <img src={product.image} alt={product.name} />
-                </div>
-
-                <div className="summary-product-info">
-                  <h3>{product.name}</h3>
-                  <p>Qty: 1</p>
-                </div>
-              </div>
-
-              <div className="summary-price-list">
-                <div className="price-row">
-                  <span>Subtotal</span>
-                  <span>{formatPrice(subtotal)}</span>
-                </div>
-
-                <div className="promo-row">
-                  <input
-                    type="text"
-                    placeholder="Promo Code (Optional)"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                  />
-                  <button type="button" onClick={handleApplyPromo}>
-                    Apply
-                  </button>
-                </div>
-
-                {discount > 0 && (
-                  <div className="price-row discount-row">
-                    <span>Discount</span>
-                    <span>-{formatPrice(discount)}</span>
+                {order.image ? (
+                  <img src={order.image} alt={order.productName} />
+                ) : (
+                  <div className="summary-product-fallback">
+                    {order.productName?.charAt(0) || "P"}
                   </div>
                 )}
 
-                <div className="price-row">
-                  <span>Shipping</span>
-                  <span className="free-text">Free</span>
-                </div>
-
-                <div className="price-row total-row">
-                  <span>Total</span>
-                  <span>{formatPrice(total)}</span>
+                <div className="summary-product-info">
+                  <h3>{order.productName}</h3>
+                  <p>{order.productSubtitle}</p>
+                  <span>Qty: {order.qty}</span>
                 </div>
               </div>
 
-              <div className="secure-checkout">
-                🔒 100% Secure & Encrypted Checkout
+              <div className="summary-line">
+                <span>Subtotal</span>
+                <strong>{formatCurrency(subtotal)}</strong>
               </div>
 
-              <div className="benefit-list">
-                {benefits.map((item, index) => (
-                  <div className="benefit-item" key={index}>
-                    <div className="benefit-icon">{item.icon}</div>
-                    <div className="benefit-label">{item.label}</div>
-                  </div>
-                ))}
+              <div className="summary-line">
+                <span>Shipping</span>
+                <strong className={shipping === 0 ? "free-text" : ""}>
+                  {shipping === 0 ? "Free" : formatCurrency(shipping)}
+                </strong>
               </div>
 
-              <div className="summary-actions">
-                <button
-                  type="button"
-                  className="back-shopping-btn"
-                  onClick={() => navigate(-1)}
-                >
-                  ← Quay lại
-                </button>
+              {discount > 0 && (
+                <div className="summary-line">
+                  <span>Discount</span>
+                  <strong className="discount-text">
+                    -{formatCurrency(discount)}
+                  </strong>
+                </div>
+              )}
+
+              <div className="promo-row">
+                <input
+                  type="text"
+                  placeholder="Promo Code (Optional)"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                />
+                <button onClick={handleApplyPromo}>Apply</button>
               </div>
-            </section>
-          </aside>
-        </div>
+
+              <div className="summary-line total-line">
+                <span>Total</span>
+                <strong>{formatCurrency(total)}</strong>
+              </div>
+
+              {submitError && (
+                <p style={{ color: "#c1124c", marginTop: "12px", marginBottom: 0 }}>
+                  {submitError}
+                </p>
+              )}
+
+              <button
+                className="proceed-btn"
+                onClick={handleProceedCheckout}
+                disabled={submitLoading}
+              >
+                {submitLoading ? "Processing..." : "Proceed to Checkout"}
+              </button>
+            </aside>
+          </div>
+        </main>
       </div>
     </div>
   );
 }
+
+export default Payment;

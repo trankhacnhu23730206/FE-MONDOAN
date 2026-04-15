@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import "./Search.css";
-import { searchProducts } from "../../services/productService";
+import { getProductsByName } from "../../services/productService";
 
 const ProductCard = ({ item, onProductClick }) => {
   return (
@@ -50,7 +50,9 @@ export default function Search() {
   };
 
   const handleSearch = async (searchQuery) => {
-    if (!searchQuery.trim()) {
+    const normalizedQuery = searchQuery.trim();
+
+    if (!normalizedQuery) {
       setResults([]);
       return;
     }
@@ -58,7 +60,7 @@ export default function Search() {
     setLoading(true);
     setError(null);
     try {
-      const products = await searchProducts(searchQuery);
+      const products = await getProductsByName(normalizedQuery);
       setResults(products);
     } catch (err) {
       console.error('Search error:', err);
@@ -81,12 +83,16 @@ export default function Search() {
   };
 
   useEffect(() => {
-    if (query) {
-      handleSearch(query);
+    const urlQuery = searchParams.get("q") || "";
+
+    setQuery(urlQuery);
+
+    if (urlQuery.trim()) {
+      handleSearch(urlQuery);
     } else {
       setResults([]);
     }
-  }, []);
+  }, [searchParams]);
 
   return (
     <div className="search-page">

@@ -1,71 +1,67 @@
-import { API_BASE_URL } from '../constants';
+import api from '../utils/api';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
+export const CART_UPDATED_EVENT = 'cart-updated';
 
-  return {
-    'Content-Type': 'application/json',
-    Authorization: token ? `Bearer ${token}` : '',
-  };
+const emitCartUpdated = (count) => {
+  window.dispatchEvent(
+    new CustomEvent(CART_UPDATED_EVENT, {
+      detail: { count },
+    })
+  );
 };
 
 export const getCart = async () => {
-  const response = await fetch(`${API_BASE_URL}/cart`, {
-    headers: getAuthHeaders(),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch cart');
+  try {
+    const { data } = await api.get('/cart');
+    return data.cart;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to fetch cart');
   }
+};
 
-  return data.cart;
+export const getCartItemCount = async () => {
+  const cart = await getCart();
+  return (cart.items || []).reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 };
 
 export const updateCartItemQty = async (itemId, quantity) => {
-  const response = await fetch(`${API_BASE_URL}/cart/${itemId}`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ quantity }),
-  });
+  try {
+    const { data } = await api.patch(`/cart/${itemId}`, { quantity });
 
-  const data = await response.json();
+    const count = await getCartItemCount();
+    emitCartUpdated(count);
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to update cart item');
+    return data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to update cart item');
   }
-
-  return data;
 };
 
 export const addToCart = async (productId, quantity = 1) => {
-  const response = await fetch(`${API_BASE_URL}/cart`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ product_id: productId, quantity }),
-  });
+  try {
+    const { data } = await api.post('/cart', {
+      product_id: productId,
+      quantity,
+    });
 
-  const data = await response.json();
+    const count = await getCartItemCount();
+    emitCartUpdated(count);
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to add to cart');
+    return data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to add to cart');
   }
-
-  return data;
 };
 
 export const removeCartItem = async (itemId) => {
-  const response = await fetch(`${API_BASE_URL}/cart/${itemId}`, {
-    method: 'DELETE',
-    headers: getAuthHeaders(),
-  });
+  try {
+    const { data } = await api.delete(`/cart/${itemId}`);
 
-  const data = await response.json();
+    const count = await getCartItemCount();
+    emitCartUpdated(count);
 
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to remove cart item');
+    return data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Failed to remove cart item');
   }
-
-  return data;
 };

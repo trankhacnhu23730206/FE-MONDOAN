@@ -4,6 +4,7 @@ import { FaUserCircle, FaEnvelope, FaPhoneAlt, FaLock } from "react-icons/fa";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import Header from "../../components/Header/Header";
 import Footer from "../../components/Footer/Footer";
+import { getMyProfile, updateMyProfile } from "../../services/authService";
 import "./EditUser.css";
 
 const EditUser = () => {
@@ -31,19 +32,58 @@ const EditUser = () => {
   });
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user")) || {};
+    const loadProfile = async () => {
+      const storedUser = JSON.parse(localStorage.getItem("user")) || {};
+      const fallbackName =
+        storedUser.user_name ||
+        storedUser.fullName ||
+        storedUser.username ||
+        storedUser.name ||
+        "";
 
-    setFormData((prev) => ({
-      ...prev,
-      fullName: user.user_name || user.fullName || user.name || "Phan Nhat Hoa",
-      email: user.email || "phannhathoa13@gmail.com",
-      phone: user.phone || "+84 587189159",
-    }));
+      setFormData((prev) => ({
+        ...prev,
+        fullName: fallbackName,
+        email: storedUser.email || "",
+        phone: storedUser.phone || "",
+      }));
 
-    setAvatar(
-      user.avatar_url ||
-        "https://ui-avatars.com/api/?name=Phan+Nhat+Hoa&background=ececec&color=555&size=128"
-    );
+      setAvatar(
+        storedUser.avatar_url ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            fallbackName || "User"
+          )}&background=ececec&color=555&size=128`
+      );
+
+      try {
+        const profile = await getMyProfile();
+
+        setFormData((prev) => ({
+          ...prev,
+          fullName:
+            profile.user_name ||
+            profile.fullName ||
+            profile.username ||
+            profile.name ||
+            "",
+          email: profile.email || "",
+          phone: profile.phone || "",
+        }));
+
+        setAvatar(
+          profile.avatar_url ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              profile.user_name || profile.fullName || profile.username || "User"
+            )}&background=ececec&color=555&size=128`
+        );
+
+        localStorage.setItem("user", JSON.stringify(profile));
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      }
+    };
+
+    loadProfile();
   }, []);
 
   const handleChange = (e) => {
@@ -83,12 +123,10 @@ const EditUser = () => {
       return "Vui lòng nhập số điện thoại.";
     }
 
-    const hasPasswordInput =
-      formData.currentPassword ||
-      formData.newPassword ||
-      formData.confirmPassword;
+    const hasPasswordChange =
+      formData.newPassword.trim() || formData.confirmPassword.trim();
 
-    if (hasPasswordInput) {
+    if (hasPasswordChange) {
       if (!formData.currentPassword) {
         return "Vui lòng nhập mật khẩu hiện tại.";
       }
@@ -127,45 +165,42 @@ const EditUser = () => {
       setError("");
       setMessage("");
 
-      // Lưu local trước để test UI
-      const oldUser = JSON.parse(localStorage.getItem("user")) || {};
-      const updatedUser = {
-        ...oldUser,
+      const payload = {
         user_name: formData.fullName,
         email: formData.email,
         phone: formData.phone,
         avatar_url: avatar,
       };
 
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-
-      // Nếu bạn có API thì mở đoạn này ra và sửa endpoint cho đúng backend
-      /*
-      const token = localStorage.getItem("token");
-
-      const response = await fetch("http://localhost:3000/api/users/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          currentPassword: formData.currentPassword,
-          newPassword: formData.newPassword,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Cập nhật thất bại.");
+      if (formData.newPassword.trim()) {
+        payload.currentPassword = formData.currentPassword;
+        payload.newPassword = formData.newPassword;
       }
-      */
 
-      setMessage("Cập nhật tài khoản thành công.");
+      const result = await updateMyProfile(payload);
+
+      if (result?.user) {
+        localStorage.setItem("user", JSON.stringify(result.user));
+        setFormData((prev) => ({
+          ...prev,
+          fullName:
+            result.user.user_name ||
+            result.user.fullName ||
+            result.user.username ||
+            prev.fullName,
+          email: result.user.email || prev.email,
+          phone: result.user.phone || "",
+        }));
+
+        setAvatar(
+          result.user.avatar_url ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              result.user.user_name || result.user.fullName || "User"
+            )}&background=ececec&color=555&size=128`
+        );
+      }
+
+      setMessage(result?.message || "Cập nhật tài khoản thành công.");
       setFormData((prev) => ({
         ...prev,
         currentPassword: "",

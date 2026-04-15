@@ -3,25 +3,13 @@ import { useNavigate } from "react-router-dom";
 import "./Home.css";
 import { getProductsByCategory } from "../../services/productService";
 import { getAllCategories } from "../../services/categoryService";
-import { addToCart } from "../../services/cartService";
 import { perks } from "../../constants";
 
-const ProductCard = ({ item, onProductClick, onAddToCart }) => {
-  const [addToCartLoading, setAddToCartLoading] = useState(false);
+const ProductCard = ({ item, onProductClick, onBuyNow }) => {
 
-  const handleAddToCart = async (e) => {
+  const handleBuyNow = (e) => {
     e.stopPropagation();
-    setAddToCartLoading(true);
-
-    try {
-      await onAddToCart(item.id);
-      // Có thể thêm toast notification ở đây
-    } catch (err) {
-      console.error('Failed to add to cart:', err);
-      // Có thể thêm error notification ở đây
-    } finally {
-      setAddToCartLoading(false);
-    }
+    onBuyNow(item.id);
   };
 
   return (
@@ -45,18 +33,16 @@ const ProductCard = ({ item, onProductClick, onAddToCart }) => {
         <span className="new-price">{item.price}</span>
       </div>
 
-      <button
-        className="buy-btn"
-        onClick={handleAddToCart}
-        disabled={addToCartLoading}
-      >
-        {addToCartLoading ? "Adding..." : "Add to cart"}
-      </button>
+      <div className="product-actions">
+        <button className="buy-btn buy-btn--now" onClick={handleBuyNow}>
+          View Details
+        </button>
+      </div>
     </div>
   );
 };
 
-const ProductSection = ({ title, tag, products, onProductClick, onAddToCart }) => {
+const ProductSection = ({ title, tag, products, onProductClick, onBuyNow }) => {
   return (
     <section className="home-section">
       <div className="section-top">
@@ -73,7 +59,7 @@ const ProductSection = ({ title, tag, products, onProductClick, onAddToCart }) =
             key={item.id} 
             item={item} 
             onProductClick={onProductClick}
-            onAddToCart={onAddToCart}
+            onBuyNow={onBuyNow}
           />
         ))}
       </div>
@@ -92,8 +78,8 @@ const Home = () => {
     navigate(`/product/${productId}`);
   };
 
-  const handleAddToCart = async (productId) => {
-    await addToCart(productId, 1);
+  const handleBuyNow = (productId) => {
+    navigate(`/product/${productId}`);
   };
 
   const getRandomCategories = (allCategories) => {
@@ -203,7 +189,7 @@ const Home = () => {
                     thumb: product.thumbnail_url,
                   }))}
                   onProductClick={handleProductClick}
-                  onAddToCart={handleAddToCart}
+                  onBuyNow={handleBuyNow}
                 />
               )}
             </div>

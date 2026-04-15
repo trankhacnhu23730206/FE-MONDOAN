@@ -55,3 +55,17 @@ export const searchProducts = async (query) => {
     throw error;
   }
 };
+
+export const getProductsByName = async (name) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/products/name/${encodeURIComponent(name)}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch products by name');
+    }
+    const data = await response.json();
+    return data.products || [];
+  } catch (error) {
+    console.error('Error fetching products by name:', error);
+    throw error;
+  }
+};
