@@ -15,6 +15,8 @@ import Support from './pages/Support/Support'
 import Search from './pages/Search/Search'
 import PaymentSuccess from './pages/PaymentSuccess/PaymentSuccess'
 import EditUser from './pages/EditUser/EditUser';
+import StatusOrder from './pages/StatusOrder/StatusOrder';
+import PrivateRoute from './routes/PrivateRoute';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -48,13 +50,16 @@ function App() {
         <Route path="/create-account" element={<CreateAccount />} />
         <Route path="/category/:categoryId" element={<ProductByCategory />} />
         <Route path="/product/:productId" element={<ProductDetailPage />} />
-        <Route path="/order/:productId" element={<Order />} />
-        <Route path="/payment/:orderId" element={<Payment />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path="/cart" element={<Cart />} />
+        <Route element={<PrivateRoute />}>
+          <Route path="/order/:productId" element={<Order />} />
+          <Route path="/payment/:orderId" element={<Payment />} />
+          <Route path="/payment-success" element={<PaymentSuccess />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/edit-user" element={<EditUser />} />
+          <Route path="/status-order" element={<StatusOrder />} />
+        </Route>
         <Route path="/support" element={<Support />} />
         <Route path="/search" element={<Search />} />
-        <Route path="/edit-user" element={<EditUser />} />
       </Routes>
       <Footer />
     </BrowserRouter>

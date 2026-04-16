@@ -12,7 +12,17 @@ const demoOrder = {
   price: 9998000,
   shipping: 0,
   image: "",
+  items: [],
 };
+
+const normalizeOrderItem = (item) => ({
+  productId: Number(item.productId || item.product_id || 0),
+  productName: item.productName || item.name || "Product",
+  productSubtitle: item.productSubtitle || item.description || item.desc || "",
+  quantity: Math.max(1, Number(item.quantity || item.qty || 1)),
+  price: Number(item.price || 0),
+  image: item.image || item.thumbnail_url || "",
+});
 
 const supportedBanks = [
   "Vietcombank",
@@ -37,6 +47,26 @@ function Payment() {
     ...demoOrder,
     ...orderFromState,
   };
+  const orderItems = useMemo(() => {
+    if (Array.isArray(order.items) && order.items.length > 0) {
+      return order.items
+        .map(normalizeOrderItem)
+        .filter((item) => Number.isInteger(item.productId) && item.productId > 0);
+    }
+
+    const fallbackItem = normalizeOrderItem({
+      productId: order.productId,
+      productName: order.productName,
+      productSubtitle: order.productSubtitle,
+      quantity: order.qty,
+      price: order.price,
+      image: order.image,
+    });
+
+    return Number.isInteger(fallbackItem.productId) && fallbackItem.productId > 0
+      ? [fallbackItem]
+      : [];
+  }, [order]);
 
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [promoCode, setPromoCode] = useState("");
@@ -62,8 +92,11 @@ function Payment() {
   };
 
   const subtotal = useMemo(() => {
-    return Number(order.price || 0) * Number(order.qty || 1);
-  }, [order.price, order.qty]);
+    return orderItems.reduce(
+      (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+      0
+    );
+  }, [orderItems]);
 
   const shipping = Number(order.shipping || 0);
 
@@ -191,9 +224,15 @@ function Payment() {
 
     if (!validateForm()) return;
 
-    const productId = Number(order.productId);
-    if (!Number.isInteger(productId) || productId <= 0) {
-      setSubmitError("Thiếu productId hợp lệ để tạo đơn hàng.");
+    const apiItems = orderItems
+      .filter((item) => Number.isInteger(item.productId) && item.productId > 0)
+      .map((item) => ({
+        product_id: item.productId,
+        quantity: Number(item.quantity || 1),
+      }));
+
+    if (apiItems.length === 0) {
+      setSubmitError("Thiếu sản phẩm hợp lệ để tạo đơn hàng.");
       return;
     }
 
@@ -211,18 +250,14 @@ function Payment() {
       payment_method: mapPaymentMethodToApi(paymentMethod),
       shipping_fee: shipping,
       discount_amount: discount,
-      items: [
-        {
-          product_id: productId,
-          quantity: Number(order.qty || 1),
-        },
-      ],
+      items: apiItems,
     };
 
     const payload = {
       orderId: order.id,
       productName: order.productName,
       qty: order.qty,
+      items: orderItems,
       subtotal,
       shipping,
       discount,
@@ -439,21 +474,23 @@ function Payment() {
             <aside className="payment-summary-card">
               <h2>Order Summary</h2>
 
-              <div className="summary-product">
-                {order.image ? (
-                  <img src={order.image} alt={order.productName} />
-                ) : (
-                  <div className="summary-product-fallback">
-                    {order.productName?.charAt(0) || "P"}
-                  </div>
-                )}
+              {orderItems.map((item, index) => (
+                <div className="summary-product" key={`${item.productId}-${index}`}>
+                  {item.image ? (
+                    <img src={item.image} alt={item.productName} />
+                  ) : (
+                    <div className="summary-product-fallback">
+                      {item.productName?.charAt(0) || "P"}
+                    </div>
+                  )}
 
-                <div className="summary-product-info">
-                  <h3>{order.productName}</h3>
-                  <p>{order.productSubtitle}</p>
-                  <span>Qty: {order.qty}</span>
+                  <div className="summary-product-info">
+                    <h3>{item.productName}</h3>
+                    <p>{item.productSubtitle}</p>
+                    <span>Qty: {item.quantity}</span>
+                  </div>
                 </div>
-              </div>
+              ))}
 
               <div className="summary-line">
                 <span>Subtotal</span>

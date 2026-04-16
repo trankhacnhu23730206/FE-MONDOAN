@@ -1,10 +1,15 @@
-// import { Navigate, Outlet } from "react-router-dom";
-// import { useAuth } from "../context/AuthContext";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
-// function PrivateRoute() {
-//   const { user } = useAuth();
+function PrivateRoute() {
+  const location = useLocation();
+  const token =
+    localStorage.getItem("accessToken") || localStorage.getItem("token");
 
-//   return user ? <Outlet /> : <Navigate to="/login" replace />;
-// }
+  return token ? (
+    <Outlet />
+  ) : (
+    <Navigate to="/login" replace state={{ from: location }} />
+  );
+}
 
-// export default PrivateRoute;
+export default PrivateRoute;

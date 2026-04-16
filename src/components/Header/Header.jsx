@@ -113,6 +113,12 @@ const Header = () => {
                 >
                   Edit User
                 </Link>
+                <Link
+                  to="/status-order"
+                  className="dropdown-item"
+                >
+                  Order Status
+                </Link>
                 <button
                   type="button"
                   className="dropdown-item"

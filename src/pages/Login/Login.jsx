@@ -1,11 +1,16 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Login.css";
 import heroImg from "../../assets/hero.png";
 import api from "../../utils/api";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from;
+  const redirectTo = from
+    ? `${from.pathname || ""}${from.search || ""}${from.hash || ""}`
+    : "/";
 
   const [formData, setFormData] = useState({
     email: "",
@@ -44,7 +49,7 @@ const Login = () => {
       localStorage.setItem("refreshToken", response.data.refreshToken);
       localStorage.setItem("user", JSON.stringify(response.data.user));
 
-      navigate("/");
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       setError(error.response?.data?.message || "Đã xảy ra lỗi khi đăng nhập");
     }

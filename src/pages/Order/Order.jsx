@@ -1,10 +1,24 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import "./Order.css";
 import heroImage from "../../assets/hero.png";
+import { getProductById } from "../../services/productService";
 
 const formatPrice = (value) => value.toLocaleString("vi-VN") + "đ";
+
+const normalizeCheckoutItem = (item) => {
+  const productId = Number(item.productId || item.product_id || item.id);
+
+  return {
+    productId,
+    name: item.name || item.productName || "Product",
+    description: item.description || item.desc || item.productSubtitle || "",
+    price: Number(item.price || 0),
+    quantity: Math.max(1, Number(item.quantity || item.qty || 1)),
+    image: item.thumbnail_url || item.image || heroImage,
+  };
+};
 
 const readStoredUser = () => {
   try {
@@ -16,17 +30,25 @@ const readStoredUser = () => {
 
 export default function Order() {
   const { productId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const stateCheckoutItems = useMemo(() => {
+    const items = location.state?.checkoutItems;
+
+    if (!Array.isArray(items)) {
+      return [];
+    }
+
+    return items
+      .map(normalizeCheckoutItem)
+      .filter((item) => Number.isInteger(item.productId) && item.productId > 0);
+  }, [location.state]);
+  const [checkoutItems, setCheckoutItems] = useState(stateCheckoutItems);
+  const [productLoading, setProductLoading] = useState(true);
+  const [productError, setProductError] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const storedUser = useMemo(() => readStoredUser(), []);
-
-  const product = {
-    id: productId,
-    name: "Razer Viper V3 Pro",
-    price: 9998000,
-    thumbnail_url: "",
-  };
 
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
@@ -65,8 +87,52 @@ export default function Order() {
   }));
 
   const shippingFee = 0;
-  const subtotal = Number(product?.price || 0);
+  const subtotal = checkoutItems.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+    0
+  );
   const total = subtotal + shippingFee - discount;
+
+  useEffect(() => {
+    if (stateCheckoutItems.length > 0) {
+      setCheckoutItems(stateCheckoutItems);
+      setProductError("");
+      setProductLoading(false);
+      return;
+    }
+
+    const fetchProduct = async () => {
+      setProductLoading(true);
+      setProductError("");
+
+      try {
+        const fetchedProduct = await getProductById(productId);
+        setCheckoutItems([
+          normalizeCheckoutItem({
+            productId: fetchedProduct.id,
+            name: fetchedProduct.name,
+            description: fetchedProduct.description,
+            price: fetchedProduct.price,
+            quantity: 1,
+            image: fetchedProduct.thumbnail_url,
+          }),
+        ]);
+      } catch (error) {
+        setCheckoutItems([]);
+        setProductError(error.message || "Không thể tải thông tin sản phẩm");
+      } finally {
+        setProductLoading(false);
+      }
+    };
+
+    if (productId) {
+      fetchProduct();
+    } else {
+      setCheckoutItems([]);
+      setProductLoading(false);
+      setProductError("Không tìm thấy sản phẩm để checkout");
+    }
+  }, [productId, stateCheckoutItems]);
 
   const handleContactChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -93,7 +159,7 @@ export default function Order() {
     }
 
     if (code === "SALE10") {
-      setDiscount(Math.round(product.price * 0.1));
+      setDiscount(Math.round(subtotal * 0.1));
       toast.success("Áp dụng mã SALE10 thành công!");
       return;
     }
@@ -111,6 +177,21 @@ export default function Order() {
   const handlePlaceOrder = (e) => {
     e.preventDefault();
     setSubmitError("");
+
+    if (checkoutItems.length === 0) {
+      toast.error("Không tìm thấy thông tin sản phẩm để checkout.");
+      return;
+    }
+
+    const primaryCheckoutItem = checkoutItems[0];
+    const summaryProductName =
+      checkoutItems.length > 1
+        ? `${primaryCheckoutItem.name} + ${checkoutItems.length - 1} sản phẩm`
+        : primaryCheckoutItem.name;
+    const totalQty = checkoutItems.reduce(
+      (sum, item) => sum + Number(item.quantity || 1),
+      0
+    );
 
     const receiverName = (shippingInfo.name || "").trim();
     const receiverPhone = (shippingInfo.phone || "").trim();
@@ -135,16 +216,17 @@ export default function Order() {
       return;
     }
 
-    navigate(`/payment/${productId}`, {
+    navigate(`/payment/${primaryCheckoutItem.productId}`, {
       state: {
         order: {
-          productId: Number(productId),
-          productName: product.name,
+          productId: Number(primaryCheckoutItem.productId),
+          productName: summaryProductName,
           productSubtitle: "",
-          qty: 1,
-          price: Number(product.price || 0),
+          qty: totalQty,
+          price: subtotal,
           shipping: shippingFee,
-          image: product?.thumbnail_url || heroImage,
+          image: primaryCheckoutItem.image || heroImage,
+          items: checkoutItems,
           contactInfo: {
             name: contactName,
             email: contactEmail,
@@ -167,6 +249,35 @@ export default function Order() {
     { icon: "🛡️", label: "Risk-Free Shopping" },
     { icon: "🎧", label: "Dedicated Customer Support" },
   ];
+
+  if (productLoading) {
+    return (
+      <div className="order-page">
+        <div className="order-container">
+          <h1 className="order-title">Checkout</h1>
+          <div className="order-box">
+            <p>Đang tải thông tin sản phẩm...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (productError || checkoutItems.length === 0) {
+    return (
+      <div className="order-page">
+        <div className="order-container">
+          <h1 className="order-title">Checkout</h1>
+          <div className="order-box">
+            <p>{productError || "Không tìm thấy sản phẩm"}</p>
+            <button className="back-shopping-btn" type="button" onClick={() => navigate(-1)}>
+              ← Quay lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="order-page">
@@ -314,16 +425,19 @@ export default function Order() {
                 <h2>Order Summary</h2>
               </div>
 
-              <div className="summary-product">
-                <div className="summary-product-image">
-                  <img src={product?.thumbnail_url || heroImage} alt={product?.name || "Product"} />
-                </div>
+              {checkoutItems.map((item, index) => (
+                <div className="summary-product" key={`${item.productId}-${index}`}>
+                  <div className="summary-product-image">
+                    <img src={item.image || heroImage} alt={item.name || "Product"} />
+                  </div>
 
-                <div className="summary-product-info">
-                  <h3>{product?.name || "--"}</h3>
-                  <p>Qty: 1</p>
+                  <div className="summary-product-info">
+                    <h3>{item.name || "--"}</h3>
+                    <p>{formatPrice(item.price)}</p>
+                    <p>Qty: {item.quantity}</p>
+                  </div>
                 </div>
-              </div>
+              ))}
 
               <div className="summary-price-list">
                 <div className="price-row">

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import "./Cart.css";
 import { getCart, updateCartItemQty, removeCartItem } from "../../services/cartService";
 
@@ -32,6 +33,11 @@ const Cart = () => {
     if (!item) return;
 
     const nextQuantity = Math.max(1, item.quantity + amount);
+
+    if (amount > 0 && item.stock != null && nextQuantity > item.stock) {
+      toast.error(`"${item.name}" chỉ còn ${item.stock} sản phẩm trong kho!`);
+      return;
+    }
 
     try {
       await updateCartItemQty(id, nextQuantity);
@@ -73,7 +79,18 @@ const Cart = () => {
       return;
     }
 
-    navigate(`/order/${firstProductId}`);
+    navigate(`/order/${firstProductId}`, {
+      state: {
+        checkoutItems: cart.map((item) => ({
+          productId: Number(item.product_id || item.id),
+          name: item.name,
+          description: item.description || item.desc || "",
+          price: Number(item.price || 0),
+          quantity: Number(item.quantity || 1),
+          image: item.thumbnail_url || item.image || "",
+        })),
+      },
+    });
   };
 
   return (

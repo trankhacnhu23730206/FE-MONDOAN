@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import "./ProductByCategory.css";
 import { getProductsByCategory } from "../../services/productService";
 import { getAllCategories } from "../../services/categoryService";
-import { addToCart } from "../../services/cartService";
 
 // Chỉ dùng ảnh có sẵn trong assets của bạn
 import heroImage from "../../assets/hero.png";
@@ -23,7 +22,6 @@ export default function ProductByCategory() {
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState("featured");
   const [visibleCount, setVisibleCount] = useState(12);
-  const [addToCartLoading, setAddToCartLoading] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,20 +50,6 @@ export default function ProductByCategory() {
       fetchData();
     }
   }, [categoryId, numericCategoryId]);
-
-  const handleAddToCart = async (productId) => {
-    setAddToCartLoading(prev => ({ ...prev, [productId]: true }));
-
-    try {
-      await addToCart(productId, 1);
-      // Có thể thêm success notification ở đây
-    } catch (err) {
-      console.error('Failed to add to cart:', err);
-      // Có thể thêm error notification ở đây
-    } finally {
-      setAddToCartLoading(prev => ({ ...prev, [productId]: false }));
-    }
-  };
 
   const activeCategory = categories.find((item) => item.id === numericCategoryId) || {};
 
@@ -184,10 +168,9 @@ export default function ProductByCategory() {
                     <button
                       className="add-cart-btn"
                       type="button"
-                      onClick={() => handleAddToCart(item.id)}
-                      disabled={addToCartLoading[item.id]}
+                      onClick={() => navigate(`/product/${item.id}`)}
                     >
-                      {addToCartLoading[item.id] ? "Adding..." : "Add to cart"}
+                      View Detail
                     </button>
                   </div>
                 ))}
