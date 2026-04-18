@@ -165,10 +165,13 @@
 }
 
 .order-id {
-  font-size: 28px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: #7c7c87;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .order-product {
@@ -224,6 +227,21 @@
 
 .order-status-badge.pending {
   color: #e0a11e;
+}
+
+.order-status-badge.shipping {
+  color: #1d6fd6;
+}
+
+.order-status-badge.cancelled {
+  color: #cc3b3b;
+}
+
+.order-feedback {
+  padding: 24px 28px 30px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #6c6c79;
 }
 
 .order-total,

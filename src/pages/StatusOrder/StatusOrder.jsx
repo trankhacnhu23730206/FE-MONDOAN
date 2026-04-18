@@ -1,52 +1,7 @@
+import { useEffect, useMemo, useState } from "react";
 import "./StatusOrder.css";
-
-const orders = [
-  {
-    id: "#2359",
-    productName: "Razer Viper V3 Pro Counter-Strike 2 Edition Mouse",
-    quantity: 1,
-    status: "completed",
-    total: 4990000,
-    dateAdded: "2026-04-15",
-    thumbnail: "",
-  },
-  {
-    id: "#2360",
-    productName: "Razer Viper V3 Pro Counter-Strike 2 Edition Mouse",
-    quantity: 1,
-    status: "pending",
-    total: 4990000,
-    dateAdded: "2026-04-15",
-    thumbnail: "",
-  },
-  {
-    id: "#2361",
-    productName: "Razer Viper V3 Pro Counter-Strike 2 Edition Mouse",
-    quantity: 1,
-    status: "completed",
-    total: 4990000,
-    dateAdded: "2026-04-15",
-    thumbnail: "",
-  },
-  {
-    id: "#2362",
-    productName: "Razer Viper V3 Pro Counter-Strike 2 Edition Mouse",
-    quantity: 1,
-    status: "pending",
-    total: 4990000,
-    dateAdded: "2026-04-16",
-    thumbnail: "",
-  },
-  {
-    id: "#2363",
-    productName: "Razer Viper V3 Pro Counter-Strike 2 Edition Mouse",
-    quantity: 1,
-    status: "completed",
-    total: 4990000,
-    dateAdded: "2026-04-15",
-    thumbnail: "",
-  },
-];
+import { getMyProfile } from "../../services/authService";
+import { getMyOrders, getOrderById } from "../../services/orderService";
 
 const sidebarItems = [
   "Account Details",
@@ -56,11 +11,40 @@ const sidebarItems = [
 ];
 
 const formatCurrency = (value) => {
-  return `${new Intl.NumberFormat("vi-VN").format(value)}đ`;
+  const safeValue = Number(value) || 0;
+  return `${new Intl.NumberFormat("vi-VN").format(safeValue)}đ`;
 };
 
 const formatDate = (value) => {
+  if (!value) return "-";
   return new Date(value).toLocaleDateString("vi-VN");
+};
+
+const mapStatusToBadge = (status) => {
+  const normalized = String(status || "pending").toLowerCase();
+
+  if (["delivered", "completed", "success"].includes(normalized)) {
+    return { className: "completed", label: "Completed" };
+  }
+
+  if (["cancelled", "canceled", "failed"].includes(normalized)) {
+    return { className: "cancelled", label: "Cancelled" };
+  }
+
+  if (["shipping", "shipped", "in_transit"].includes(normalized)) {
+    return { className: "shipping", label: "Shipping" };
+  }
+
+  return { className: "pending", label: "Pending" };
+};
+
+const formatOrderId = (order) => {
+  if (order.id) return `#${order.id}`;
+  if (order.order_code) {
+    const compactCode = String(order.order_code).slice(-8);
+    return `#${compactCode}`;
+  }
+  return "-";
 };
 
 const getInitials = (name = "") => {
@@ -74,10 +58,90 @@ const getInitials = (name = "") => {
 };
 
 function StatusOrder() {
-  const user = {
-    name: "Phan Nhật Hòa",
-    email: "phannhatho13@gmail.com",
-  };
+  const [user, setUser] = useState({ name: "", email: "" });
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadPageData = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const [profile, rawOrders] = await Promise.all([
+          getMyProfile(),
+          getMyOrders(),
+        ]);
+
+        setUser({
+          name: profile?.fullName || profile?.username || "Unknown User",
+          email: profile?.email || "No email",
+        });
+
+        const normalizedOrders = await Promise.all(
+          (rawOrders || []).map(async (order) => {
+            let productName = order.product_name || order.name || "";
+            let quantity = Number(order.quantity || order.total_quantity) || 0;
+            let thumbnail = order.thumbnail_url || order.thumbnail || "";
+
+            // Fetch order detail to get product info and images since /my-orders does not include item details
+            if (order.id) {
+              try {
+                const detail = await getOrderById(order.id);
+                const items = detail?.items || [];
+
+                if (items.length > 0) {
+                  const firstItem = items[0];
+                  const totalQuantity = items.reduce(
+                    (sum, item) => sum + (Number(item.quantity) || 0),
+                    0
+                  );
+
+                  productName =
+                    firstItem?.product_name || firstItem?.name || "Sản phẩm";
+
+                  if (items.length > 1) {
+                    productName = `${productName} +${items.length - 1} sản phẩm khác`;
+                  }
+
+                  quantity = totalQuantity || Number(firstItem?.quantity) || 0;
+                  // Prioritize thumbnail from product data (newly joined in BE)
+                  thumbnail = firstItem?.thumbnail_url || thumbnail;
+                }
+              } catch {
+                // Keep base order data if detail endpoint fails.
+              }
+            }
+
+            return {
+              id: formatOrderId(order),
+              productName: productName || "Sản phẩm trong đơn hàng",
+              quantity: quantity || 1,
+              status: order.status || order.order_status || "pending",
+              total: order.total_amount || order.total || 0,
+              dateAdded: order.created_at || order.dateAdded || null,
+              thumbnail,
+            };
+          })
+        );
+
+        setOrders(normalizedOrders);
+      } catch (err) {
+        setError(err.message || "Không thể tải dữ liệu đơn hàng");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPageData();
+  }, []);
+
+  const isEmpty = useMemo(() => !loading && !error && orders.length === 0, [
+    loading,
+    error,
+    orders,
+  ]);
 
   return (
     <section className="order-status-page">
@@ -132,61 +196,74 @@ function StatusOrder() {
               </div>
 
               <div className="order-table-body">
-                {orders.map((order) => (
-                  <article key={order.id} className="order-row order-grid">
-                    <div className="order-cell order-id" data-label="Order ID">
-                      {order.id}
-                    </div>
+                {loading && (
+                  <div className="order-feedback">Loading your orders...</div>
+                )}
 
-                    <div
-                      className="order-cell order-product"
-                      data-label="Product Info"
-                    >
-                      <div className="order-thumb">
-                        {order.thumbnail ? (
-                          <img src={order.thumbnail} alt={order.productName} />
-                        ) : (
-                          <span>IMG</span>
-                        )}
-                      </div>
+                {!loading && error && <div className="order-feedback">{error}</div>}
 
-                      <div className="order-product-info">
-                        <h3>{order.productName}</h3>
-                        <p>Qty: {order.quantity}</p>
-                      </div>
-                    </div>
+                {isEmpty && (
+                  <div className="order-feedback">Bạn chưa có đơn hàng nào.</div>
+                )}
 
-                    <div
-                      className={`order-cell order-status-badge ${order.status}`}
-                      data-label="Status"
-                    >
-                      {order.status === "completed" ? "Completed" : "Pending"}
-                    </div>
+                {!loading &&
+                  !error &&
+                  orders.map((order) => {
+                    const statusBadge = mapStatusToBadge(order.status);
 
-                    <div
-                      className="order-cell order-total"
-                      data-label="Total"
-                    >
-                      {formatCurrency(order.total)}
-                    </div>
+                    return (
+                      <article key={order.id} className="order-row order-grid">
+                        <div className="order-cell order-id" data-label="Order ID">
+                          {order.id}
+                        </div>
 
-                    <div className="order-cell order-date" data-label="Date Added">
-                      {formatDate(order.dateAdded)}
-                    </div>
+                        <div
+                          className="order-cell order-product"
+                          data-label="Product Info"
+                        >
+                          <div className="order-thumb">
+                            {order.thumbnail ? (
+                              <img src={order.thumbnail} alt={order.productName} />
+                            ) : (
+                              <span>IMG</span>
+                            )}
+                          </div>
 
-                    <div className="order-cell order-actions" data-label="Action">
-                      {order.status === "completed" && (
-                        <button type="button" className="action-btn buy-again-btn">
-                          Buy Again
-                        </button>
-                      )}
+                          <div className="order-product-info">
+                            <h3>{order.productName}</h3>
+                            <p>Qty: {order.quantity}</p>
+                          </div>
+                        </div>
 
-                      <button type="button" className="action-btn contact-btn">
-                        Contact
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                        <div
+                          className={`order-cell order-status-badge ${statusBadge.className}`}
+                          data-label="Status"
+                        >
+                          {statusBadge.label}
+                        </div>
+
+                        <div className="order-cell order-total" data-label="Total">
+                          {formatCurrency(order.total)}
+                        </div>
+
+                        <div className="order-cell order-date" data-label="Date Added">
+                          {formatDate(order.dateAdded)}
+                        </div>
+
+                        <div className="order-cell order-actions" data-label="Action">
+                          {statusBadge.className === "completed" && (
+                            <button type="button" className="action-btn buy-again-btn">
+                              Buy Again
+                            </button>
+                          )}
+
+                          <button type="button" className="action-btn contact-btn">
+                            Contact
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
               </div>
             </div>
           </div>
