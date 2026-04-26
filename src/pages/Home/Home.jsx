@@ -4,6 +4,7 @@ import "./Home.css";
 import { getProductsByCategory } from "../../services/productService";
 import { getAllCategories } from "../../services/categoryService";
 import { perks } from "../../constants";
+import ChatBotWidget from "../../components/ChatBot/ChatBot";
 
 const ProductCard = ({ item, onProductClick, onBuyNow }) => {
 
@@ -208,6 +209,8 @@ const Home = () => {
           </div>
         </section>
       </main>
+
+      <ChatBotWidget onSuggestionClick={handleProductClick} />
     </div>
   );
 };
